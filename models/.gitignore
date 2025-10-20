@@ -1,1 +1,2 @@
-*.joblib
+/vectorizer.joblib
+/label_encoder.joblib

@@ -1,35 +1,40 @@
 stages:
-  get_data:
-    cmd: python -m src.data.make_dataset
+  data_ingestion:
+    cmd: python src/data_model_pipeline/data_ingestion.py
     deps:
-      - src/data/make_dataset.py
-      - config/config.py
-      - params.yaml
+      - src/data_model_pipeline/data_ingestion.py
+      - data/raw/new_merged_languages.csv
     outs:
-      - data/raw/iris.csv
+      - data/preprocessed/train.csv
+      - data/preprocessed/val.csv
+      - data/preprocessed/test.csv
 
-  process_data:
-    cmd: python -m src.data.process_data
+  data_processing:
+    cmd: python src/data_model_pipeline/data_processing.py
     deps:
-      - src/data/process_data.py
-      - data/raw/iris.csv
-      - config/config.py
-      - params.yaml
+      - src/data_model_pipeline/data_processing.py
+      - data/preprocessed/train.csv
+      - data/preprocessed/val.csv
+      - data/preprocessed/test.csv
     outs:
-      - data/processed/processed_iris.csv
+      - models/vectorizer.joblib
+      - models/label_encoder.joblib
 
-  train:
-    cmd: python -m src.models.train_model
+  model_training:
+    cmd: python src/data_model_pipeline/model_training.py
     deps:
-      - src/models/train_model.py
-      - data/processed/processed_iris.csv
-      - config/config.py
-      - params.yaml
+      - src/data_model_pipeline/model_training.py
+      - data/processed/
     outs:
-      - models/model.joblib
-    metrics:
-      - reports/metrics.json:
-          cache: false 
-    plots:
-      - confusion_matrix.png:
-          cache: false
+      - models/language_model.pkl
+
+
+  model_evaluation:
+    cmd: python src/data_model_pipeline/model_evaluation.py
+    deps:
+      - src/data_model_pipeline/model_evaluation.py
+      - models/language_model.pkl
+      - models/label_encoder.joblib
+      - models/vectorizer.joblib
+    outs:
+      - reports/report.json
