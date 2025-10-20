@@ -12,3 +12,13 @@ venv/
 
 # Data & Models (tracked by DVC, not Git)
 mlruns/
+
+
+# Data files
+.data/preprocessed/*.csv
+notebooks/*.csv
+!*.dvc  # But keep .dvc files
+
+# Model files
+models/*
+!models/.gitignore

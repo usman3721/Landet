@@ -1,40 +1,32 @@
 stages:
-  data_ingestion:
-    cmd: python src/data_model_pipeline/data_ingestion.py
-    deps:
-      - src/data_model_pipeline/data_ingestion.py
-      - data/raw/new_merged_languages.csv
-    outs:
-      - data/preprocessed/train.csv
-      - data/preprocessed/val.csv
-      - data/preprocessed/test.csv
-
   data_processing:
     cmd: python src/data_model_pipeline/data_processing.py
     deps:
-      - src/data_model_pipeline/data_processing.py
-      - data/preprocessed/train.csv
-      - data/preprocessed/val.csv
-      - data/preprocessed/test.csv
+    - src/data_model_pipeline/data_processing.py
+    - data/preprocessed/train.csv
+    - data/preprocessed/val.csv
+    - data/preprocessed/test.csv
     outs:
-      - models/vectorizer.joblib
-      - models/label_encoder.joblib
+    - models/vectorizer.joblib
+    - models/label_encoder.joblib
 
   model_training:
-    cmd: python src/data_model_pipeline/model_training.py
+    cmd: python -m src.data_model_pipeline.model_training
+
     deps:
-      - src/data_model_pipeline/model_training.py
-      - data/processed/
+    - src/data_model_pipeline/model_training.py
+    - data/preprocessed/
+
     outs:
-      - models/language_model.pkl
+    - models/language_model.pkl
 
 
   model_evaluation:
-    cmd: python src/data_model_pipeline/model_evaluation.py
+    cmd: python -m src.data_model_pipeline.model_evaluation
     deps:
-      - src/data_model_pipeline/model_evaluation.py
-      - models/language_model.pkl
-      - models/label_encoder.joblib
-      - models/vectorizer.joblib
+    - src/data_model_pipeline/model_evaluation.py
+    - models/language_model.pkl
+    - models/label_encoder.joblib
+    - models/vectorizer.joblib
     outs:
-      - reports/report.json
+    - reports/report.json
