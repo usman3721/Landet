@@ -3891,6 +3891,37 @@ cymem = ">=2.0.2,<2.1.0"
 murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
+name = "prometheus-client"
+version = "0.23.1"
+description = "Python client for the Prometheus monitoring system."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "prometheus_client-0.23.1-py3-none-any.whl", hash = "sha256:dd1913e6e76b59cfe44e7a4b83e01afc9873c1bdfd2ed8739f1e76aeca115f99"},
+    {file = "prometheus_client-0.23.1.tar.gz", hash = "sha256:6ae8f9081eaaaf153a2e959d2e6c4f4fb57b12ef76c8c7980202f1e57b48b2ce"},
+]
+
+[package.extras]
+twisted = ["twisted"]
+
+[[package]]
+name = "prometheus-fastapi-instrumentator"
+version = "7.1.0"
+description = "Instrument your FastAPI app with Prometheus metrics"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "prometheus_fastapi_instrumentator-7.1.0-py3-none-any.whl", hash = "sha256:978130f3c0bb7b8ebcc90d35516a6fe13e02d2eb358c8f83887cdef7020c31e9"},
+    {file = "prometheus_fastapi_instrumentator-7.1.0.tar.gz", hash = "sha256:be7cd61eeea4e5912aeccb4261c6631b3f227d8924542d79eaf5af3f439cbe5e"},
+]
+
+[package.dependencies]
+prometheus-client = ">=0.8.0,<1.0.0"
+starlette = ">=0.30.0,<1.0.0"
+
+[[package]]
 name = "prompt-toolkit"
 version = "3.0.52"
 description = "Library for building powerful interactive command lines in Python"
@@ -6637,4 +6668,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "ceb46b33a3632b081479ab8af452aa254412311d15a2dac45c850e85515d64a0"
+content-hash = "b69f45d2d6e2f85940d2c4edb0ab8a24f9ee432bb22583473e3ff073ac504cd6"

@@ -4,7 +4,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 import joblib
 import os
+import mlflow
 
+directory="models"
 
 def process_language_data(train_df, val_df, test_df):
     """Cleans and vectorizes text data, then encodes labels."""
@@ -60,23 +62,38 @@ def process_language_data(train_df, val_df, test_df):
 def dump_processed_data(processed_data, directory="models"):
     """Saves TF-IDF vectorizer and label encoder for later use."""
     os.makedirs(directory, exist_ok=True)
+    vectorizer_path = os.path.join(directory, "vectorizer.joblib")
+    le_path = os.path.join(directory, "label_encoder.joblib")
+    joblib.dump(processed_data["vectorizer"], vectorizer_path)
+    joblib.dump(processed_data["label_encoder"], le_path)
 
-    joblib.dump(processed_data["vectorizer"], os.path.join(directory, "vectorizer.joblib"))
-    joblib.dump(processed_data["label_encoder"], os.path.join(directory, "label_encoder.joblib"))
+    return {
+        "vectorizer_path": vectorizer_path,
+        "label_encoder_path": le_path
+    }
 
-    print(f"✅ Saved vectorizer and label encoder to {directory}/")
+  
 
 
 def main():
     # Load datasets
-    train_df = pd.read_csv("data/preprocessed/train.csv")
-    val_df = pd.read_csv("data/preprocessed/val.csv")
-    test_df = pd.read_csv("data/preprocessed/test.csv")
+    mlflow.set_experiment("language_detector_pipeline")
+    with mlflow.start_run(run_name="data_processing"):
+        train_df = pd.read_csv("data/preprocessed/train.csv")
+        val_df = pd.read_csv("data/preprocessed/val.csv")
+        test_df = pd.read_csv("data/preprocessed/test.csv")
 
     # Process and dump
-    processed_data = process_language_data(train_df, val_df, test_df)
-    dump_processed_data(processed_data)
+        processed_data = process_language_data(train_df, val_df, test_df)
+        artifacts=dump_processed_data(processed_data)
+
+        mlflow.log_artifact(artifacts["vectorizer_path"], artifact_path="models")
+        mlflow.log_artifact(artifacts["label_encoder_path"], artifact_path="models")
+
+        print(f"✅ Saved vectorizer and label encoder to {directory}/")
+
 
 
 if __name__ == "__main__":
     main()
+

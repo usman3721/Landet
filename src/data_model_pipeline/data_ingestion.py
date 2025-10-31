@@ -1,10 +1,12 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
+import mlflow
 
 RAW_FILE_PATH = "data/raw/new_merged_languages.csv"
 PROCESSED_DIR = "data/preprocessed"
 
+mlflow.sklearn.autolog()
 
 def load_data(file_path=RAW_FILE_PATH):
     """Load raw dataset from CSV."""
@@ -60,10 +62,21 @@ def save_processed_data(train_df, val_df, test_df, output_dir=PROCESSED_DIR):
 
 
 def main():
-    df = load_data()
-    df = clean_data(df)
-    train_df, val_df, test_df = split_data(df)
-    save_processed_data(train_df, val_df, test_df)
+    mlflow.set_experiment("language_detector_pipeline")
+
+    with mlflow.start_run(run_name="data_ingestion"):
+
+        df = load_data()
+        df = clean_data(df)
+        train_df, val_df, test_df = split_data(df)
+        save_processed_data(train_df, val_df, test_df)
+
+        # logging parameters and artifacts
+        mlflow.log_param("train_row",len(train_df))
+        mlflow.log_param("val_row",len(val_df))
+        mlflow.log_param("test_row",len(test_df))
+
+        print("🏁 Data ingestion process completed. Saved to",PROCESSED_DIR)
 
 
 if __name__ == "__main__":

@@ -22,3 +22,5 @@ notebooks/*.csv
 # Model files
 models/*
 !models/.gitignore
+
+/.env

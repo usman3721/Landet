@@ -1,60 +1,28 @@
 import os
 import json
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
-
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report,confusion_matrix
+import matplotlib.pyplot as plt
+import pandas as pd
+import joblib
+import mlflow
+from src.data_model_pipeline.data_processing import process_language_data
+from src.data_model_pipeline.model_training import train_language_model
+import seaborn as sns
+MODELS_DIR = "models"
+REPORTS_DIR = "reports"
 
 def evaluate_model(model, X_val_tfidf, y_val_encoded, label_encoder, show_samples=True, save_report=True, report_dir="reports"):
-    """
-    Evaluate a trained model on validation data and optionally save a JSON report.
 
-    Parameters
-    ----------
-    model : trained model (e.g., MultinomialNB)
-        The trained model to evaluate.
-    X_val_tfidf : sparse matrix
-        TF-IDF transformed validation features.
-    y_val_encoded : array-like
-        Encoded true labels for validation set.
-    label_encoder : sklearn.preprocessing.LabelEncoder
-        Used to decode label integers to class names.
-    show_samples : bool
-        Whether to print sample predictions for inspection.
-    save_report : bool
-        Whether to save the evaluation metrics to JSON.
-    report_dir : str
-        Directory where report.json will be saved.
-    """
-
-    # ------------------------
-    # Predictions
-    # ------------------------
     y_val_pred = model.predict(X_val_tfidf)
 
-    # ------------------------
-    # Metrics
-    # ------------------------
+
     accuracy = accuracy_score(y_val_encoded, y_val_pred)
     precision = precision_score(y_val_encoded, y_val_pred, average="weighted")
     recall = recall_score(y_val_encoded, y_val_pred, average="weighted")
     f1 = f1_score(y_val_encoded, y_val_pred, average="weighted")
 
-    # ------------------------
-    # Print Summary
-    # ------------------------
-    print("\n🚀 MODEL PERFORMANCE SUMMARY")
-    print("=" * 50)
-    print(f"✅ Accuracy:  {accuracy:.4f} ({accuracy * 100:.2f}%)")
-    print(f"✅ Precision: {precision:.4f}")
-    print(f"✅ Recall:    {recall:.4f}")
-    print(f"✅ F1-Score:  {f1:.4f}")
-    print(f"📚 Number of Languages: {len(label_encoder.classes_)}")
-    print(f"🧩 Validation Samples:  {len(y_val_encoded)}")
-    print("=" * 50)
 
-    # ------------------------
-    # Detailed Report
-    # ------------------------
     class_report = classification_report(
         y_val_encoded,
         y_val_pred,
@@ -63,19 +31,19 @@ def evaluate_model(model, X_val_tfidf, y_val_encoded, label_encoder, show_sample
         output_dict=True  # ✅ For saving to JSON
     )
 
+        # confusion matrix plot
+    cm = confusion_matrix(y_val_encoded, y_val_pred)
+    plt.figure(figsize=(10,8))
+    sns.heatmap(cm, fmt='d', cmap='Blues')
+    plt.title("Confusion matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.tight_layout()
+    cm_path = os.path.join(REPORTS_DIR, "confusion_matrix.png")
+    plt.savefig(cm_path)
+    plt.close()
     # ------------------------
-    # Show Random Samples
-    # ------------------------
-    if show_samples:
-        print("\n🔍 Sample Predictions:")
-        sample_indices = np.random.choice(len(y_val_encoded), 5, replace=False)
-        for idx in sample_indices:
-            actual = label_encoder.inverse_transform([y_val_encoded[idx]])[0]
-            predicted = label_encoder.inverse_transform([y_val_pred[idx]])[0]
-            correct = "✅" if actual == predicted else "❌"
-            print(f"   {correct} Actual: {actual:15} → Predicted: {predicted}")
 
-    # ------------------------
     # Save Report
     # ------------------------
     if save_report:
@@ -95,19 +63,11 @@ def evaluate_model(model, X_val_tfidf, y_val_encoded, label_encoder, show_sample
 
         print(f"\n📝 Evaluation report saved at: {report_path}")
 
-    return {
-        "accuracy": accuracy,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1
-    }
+    return report_data,cm_path
 
 
 if __name__ == "__main__":
-    import pandas as pd
-    import joblib
-    from src.data_model_pipeline.data_processing import process_language_data
-    from src.data_model_pipeline.model_training import train_language_model
+
 
     # Load datasets
     train_df = pd.read_csv("data/preprocessed/train.csv")
@@ -121,16 +81,31 @@ if __name__ == "__main__":
     y_val_encoded = processed_data["y_val_encoded"]
     label_encoder = processed_data["label_encoder"]
 
+    model_path = os.path.join(MODELS_DIR, "language_detector.joblib")
+    
     # Load the trained model
-    model = joblib.load("models/language_model.pkl")
+    model = joblib.load("models\language_detector.joblib")
+    mlflow.set_experiment("language_detector_pipeline")
+    with mlflow.start_run(run_name="model_evaluation"):
+        try:
+            import subprocess
+            git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+            mlflow.set_tag("git_commit", git_sha)
+        except Exception:
+            pass
 
     # Evaluate the model
-    evaluate_model(
-        model,
-        X_val_tfidf,
-        y_val_encoded,
-        label_encoder,
-        show_samples=True,
-        save_report=True,
-        report_dir="reports"
-    )
+        report,cm_path=evaluate_model(
+            model,
+            X_val_tfidf,
+            y_val_encoded,
+            label_encoder,
+            show_samples=True,
+            save_report=True,
+            report_dir="reports"
+        )
+
+        mlflow.log_metric("test_accuracy", report["accuracy"])
+        mlflow.log_artifact(os.path.join(REPORTS_DIR, "report.json"), artifact_path="reports")
+        mlflow.log_artifact(cm_path, artifact_path="reports")
+        print("Evaluation finished and logged to MLflow.")
