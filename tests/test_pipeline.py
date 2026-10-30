@@ -1,21 +1,29 @@
-import os
-from subprocess import run
-from config.config import config
+import joblib
+
+from src.data_model_pipeline.data_ingestion import split_data
+from src.data_model_pipeline.data_processing import fit_preprocessors, save_preprocessors
+from src.data_model_pipeline.model_evaluation import evaluate_model
+from src.data_model_pipeline.model_training import save_model, train_language_model
 
 
-def test_pipeline_reproducibility():
-    """Tests if the DVC pipeline runs successfully."""
-    result = run(["dvc", "repro", "--force"], capture_output=True, text=True)
-    assert result.returncode == 0, "DVC pipeline failed to reproduce."
-    assert os.path.exists(config["data"]["processed_data_path"])
-    assert os.path.exists(config["train"]["model_path"])
+def test_pipeline_runs_end_to_end(sample_df, tmp_path):
+    """Run every pipeline step on tiny data and check the saved model works."""
+    train_df, val_df, _ = split_data(sample_df)
 
+    vectorizer, label_encoder = fit_preprocessors(train_df)
+    save_preprocessors(vectorizer, label_encoder, directory=tmp_path)
+    model = train_language_model(train_df, vectorizer, label_encoder)
+    model_path = save_model(model, directory=tmp_path)
 
-def test_prediction_script():
-    """Tests the prediction script."""
-    result = run(
-        ["python", "-m", "src.models.predict_model"],
-        capture_output=True,
-        text=True,
+    report, _, _ = evaluate_model(
+        joblib.load(model_path), vectorizer, label_encoder, val_df, report_dir=tmp_path
     )
-    assert "Prediction for sample" in result.stdout
+
+    assert report["accuracy"] > 0.9
+    assert {path.name for path in tmp_path.iterdir()} == {
+        "vectorizer.joblib",
+        "label_encoder.joblib",
+        "language_detector.joblib",
+        "report.json",
+        "confusion_matrix.png",
+    }

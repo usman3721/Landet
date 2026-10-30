@@ -1,4 +1,0 @@
-[core]
-    remote = myremote
-['remote "myremote"']
-    url = C:\Users\DELL\Desktop\Upskilling\Landet_data_model

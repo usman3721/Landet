@@ -1,49 +1,37 @@
-# Dockerfile
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1
 
-# Set working directory
+# ---------- Stage 1: build the virtualenv with uv ----------
+FROM python:3.11-slim AS builder
+
+# Pinned to the uv version that wrote uv.lock
+COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /usr/local/bin/uv
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+# --locked: fail if uv.lock is out of date; --no-default-groups: runtime packages only
+RUN uv sync --locked --no-default-groups --no-install-project
+
+# ---------- Stage 2: slim runtime image ----------
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY --from=builder /app/.venv /app/.venv
+COPY src ./src
+# The model is not in the image: docker-compose mounts ./models at runtime.
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN pip install poetry==2.2.1
-
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
-
-# Configure poetry to not create virtual environment
-RUN poetry config virtualenvs.create false
-
-# Install dependencies
-RUN poetry install --no-interaction --no-ansi --no-root
-
-# Copy application code
-COPY . .
-
-# Install the project itself
-RUN poetry install --no-interaction --no-ansi
-
-# Expose port
+USER appuser
 EXPOSE 8000
 
-# Health check
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-#     CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
 
-# Run the application
 CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-
-

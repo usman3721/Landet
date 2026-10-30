@@ -1,18 +1,22 @@
-import os
 import redis
-from dotenv import load_dotenv
 
-load_dotenv()
+from src.app.core.config import settings
 
-REDIS_URL = os.getenv("REDIS_URL")
+redis_client = redis.Redis.from_url(
+    settings.REDIS_URL, decode_responses=True, socket_connect_timeout=1
+)
 
-redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
 
-
+# The cache only makes things faster, so if Redis is down we skip it instead of failing.
 def get_cached_prediction(key: str):
-    value = redis_client.get(key)
-    return eval(value) if value else None
+    try:
+        return redis_client.get(key)
+    except redis.RedisError:
+        return None
 
 
-def set_cached_prediction(key: str, value: dict):
-    redis_client.set(key, str(value))
+def set_cached_prediction(key: str, value: str):
+    try:
+        redis_client.set(key, value)
+    except redis.RedisError:
+        pass
