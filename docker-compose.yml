@@ -1,0 +1,16 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=demo-key
+      - JWT_SECRET_KEY=secret
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./models:/app/models
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine

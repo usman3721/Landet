@@ -1,59 +1,40 @@
+from functools import lru_cache
+
 import joblib
-import pandas as pd
-import mlflow
-import subprocess
-from app.core.config import settings
-from app.cache.redis_cache import set_cached_prediction, get_cached_prediction
 
-# ✅ Load model, vectorizer, and encoder
-model = joblib.load(settings.MODEL_PATH)
-vectorizer = joblib.load(settings.VECTOR_PATH)
-encoder = joblib.load(settings.ENCODER_PATH)
+from src.app.cache.redis_cache import get_cached_prediction, set_cached_prediction
+from src.app.core.config import settings
+from src.data_model_pipeline.data_processing import clean_text
 
-mlflow.set_tracking_uri("file:./mlruns")  # local MLflow tracking
 
-def get_git_commit():
-    try:
-        return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-    except Exception:
-        return "unknown"
+@lru_cache
+def load_artifacts():
+    """Load the model once, on the first prediction, then keep it in memory."""
+    model = joblib.load(settings.MODEL_PATH)
+    vectorizer = joblib.load(settings.VECTOR_PATH)
+    encoder = joblib.load(settings.ENCODER_PATH)
+    return model, vectorizer, encoder
+
 
 def predict_language(text: str):
-    """
-    Predict the language of the given text using vectorizer + model + encoder.
-    """
-    cache_key = text.lower().strip()
-    cached = get_cached_prediction(cache_key)
+    """Predict the language of the given text using vectorizer + model + encoder."""
+    # Text must be cleaned exactly as it was in training, or the model sees different input.
+    cleaned = clean_text(text)
+
+    cached = get_cached_prediction(cleaned)
     if cached:
         return cached
 
-    # ✅ Step 1 — Vectorize input text
-    X = vectorizer.transform([text])
+    model, vectorizer, encoder = load_artifacts()
 
-    # ✅ Step 2 — Predict (numeric label)
-    y_pred = model.predict(X)[0]  # This should work if model has predict method
+    # Step 1: turn text into numbers
+    X = vectorizer.transform([cleaned])
 
-    # ✅ Step 3 — Decode predicted label to language name
-    language = encoder.inverse_transform([y_pred])[0]
+    # Step 2: predict (numeric label)
+    y_pred = model.predict(X)
 
-    # ✅ Cache the result
-    set_cached_prediction(cache_key, language)
+    # Step 3: decode the numeric label back to a language name
+    language = str(encoder.inverse_transform(y_pred)[0])
 
-    # ✅ Log in MLflow - FIXED: Don't log the actual objects, just metadata
-    with mlflow.start_run(run_name="language_detection"):
-        mlflow.log_param("git_commit", get_git_commit())
-        mlflow.log_param("model_path", settings.MODEL_PATH)
-        mlflow.log_param("vectorizer_path", settings.VECTOR_PATH)
-        mlflow.log_param("encoder_path", settings.ENCODER_PATH)
-        mlflow.log_param("input_text_sample", text[:100])  # Log sample of input
-        mlflow.log_metric("input_length", len(text))
-        mlflow.log_metric("is_cached", 0)
-        mlflow.log_metric("predicted_label", y_pred)
-        mlflow.log_param("predicted_language", language)
-        
-        # Only log file paths as artifacts, not the loaded objects
-        # mlflow.log_artifact(settings.MODEL_PATH)  # Remove or fix this
-        # mlflow.log_artifact(settings.VECTOR_PATH)  # Remove or fix this  
-        # mlflow.log_artifact(settings.ENCODER_PATH)  # Remove or fix this
-
+    set_cached_prediction(cleaned, language)
     return language
