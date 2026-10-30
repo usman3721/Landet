@@ -42,6 +42,10 @@ default-groups = ["dev", "ml"]  # `uv sync` installs everything; Docker installs
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+filterwarnings = [
+    # Comes from inside starlette, not this project
+    "ignore:The anyio.abc.BlockingPortal alias:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
