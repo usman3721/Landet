@@ -51,9 +51,6 @@ def predict_language(text: str):
         mlflow.log_metric("predicted_label", y_pred)
         mlflow.log_param("predicted_language", language)
         
-        # Only log file paths as artifacts, not the loaded objects
-        # mlflow.log_artifact(settings.MODEL_PATH)  # Remove or fix this
-        # mlflow.log_artifact(settings.VECTOR_PATH)  # Remove or fix this  
-        # mlflow.log_artifact(settings.ENCODER_PATH)  # Remove or fix this
+
 
     return language

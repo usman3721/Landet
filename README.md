@@ -42,4 +42,50 @@ Then:
 poetry install
 ```
 3️⃣ Activate the Virtual Environment
+```bash
+language-detector/
+│
+├── app/
+│   ├── api/
+│   │   ├── routes_auth.py         # Authentication endpoints
+│   │   ├── routes_predict.py      # Language prediction endpoint
+│   │
+│   ├── core/
+│   │   ├── config.py              # Environment variables & settings
+│   │   ├── dependencies.py        # API key & JWT dependencies
+│   │   ├── exceptions.py          # Global exception handling
+│   │   ├── security.py            # JWT token generation/verification
+│   │
+│   ├── middleware/
+│   │   ├── logging_middleware.py  # Request/response logging
+│   │
+│   ├── services/
+│   │   ├── language_service.py    # Model loading & prediction logic
+│   │
+│   ├── utils/
+│   │   ├── redis_cache.py         # Redis caching functions
+│   │
+│   ├── models/
+│   │   └── model.joblib           # Trained ML model file
+│   │
+│   └── main.py                    # FastAPI app entry point
+│
+├── data/                          # Dataset and versioned files (DVC)
+├── mlruns/                        # MLflow experiment logs
+├── dvc.yaml                       # DVC pipeline configuration
+├── poetry.lock                    # Poetry lock file
+├── pyproject.toml                 # Project dependencies and metadata
+├── .env                           # Environment variables
+└── README.md                      # Documentation
+```
 
+
+---
+
+## ⚙️ Installation
+
+### 1️⃣ Clone the Repository
+
+```bash
+git clone https://github.com/usmanazan3721/language-detector.git
+cd language-detector

@@ -6,6 +6,10 @@ from app.core.exceptions import register_exception_handlers
 
 app = FastAPI(title='Language Dectector API')
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 # link middleware
 app.add_middleware(LoggingMiddleware)
 
@@ -22,4 +26,3 @@ Instrumentator().instrument(app).expose(app)
 register_exception_handlers(app)
 
 
-# uvicorn app.main:app --reload
